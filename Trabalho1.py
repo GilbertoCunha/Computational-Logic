@@ -29,17 +29,19 @@ class Meeting():
         start = time.time()
 
         avail_slots = {}
-        D = Int('D') # Dia
-        T = Int('Time') # Hora do dia
-        N = Int('N') # Número de participantes disponíveis
+        D = Int('D') # Day
+        T = Int('Time') # Time of day
+        N = Int('N') # Number of available participants
         s = Solver()
         for slot in leader:
-            s.push() # Guardar slot
+            s.push() # Save slot
             s.add(D == days[slot.day])
+            
+            # Iterate slot hours
             avail_slots[slot.day] = []
-            for hour in range(slot.time_interval[0], slot.time_interval[1]): # Iterar horas do slot
+            for hour in range(slot.time_interval[0], slot.time_interval[1]): s
                 s.push() # Guardar hora
-                s.add(And(T >= hour, T < hour + 1))
+                s.add(T == hour)
                 
                 num_part = 1
                 for part in participants: # Iterar participantes
@@ -52,43 +54,13 @@ class Meeting():
                         
                     s.pop() # Remover participante
                        
+                print(slot.day, hour, num_part >= (len(participants)+1)/2)
                 s.add(And(N == num_part, N >= (len(participants)+1)/2))
                 if s.check() == sat: # Esta hora está disponível
                     m = s.model()
                     avail_slots[slot.day].append(m[T])
                 s.pop() # Remover hora
             s.pop() # Remover slot
-                    
-
-        """avail_slots = {}
-        for day in days:
-            avail_slots[day] = []
-            for hour in range(8, 20, 1):
-                s = Solver()
-                T = Int('T')
-                s.add(T == hour)
-                L = Bool('L')
-                leader_slots = [slot.slot_to_cond(T) for slot in leader if slot.day == day]
-                leader_condition = Or(leader_slots)
-                s.add(L == (len(leader_slots)!=0)) # Verify if leader can at least once
-                s.add(leader_condition)
-
-                # Verify Participants
-                if s.check() == sat:
-                    num_part = 1
-                    for part in participants:
-                        part_slots = [slot.slot_to_cond(T) for slot in part if slot.day == day]
-                        part_condition = Or(part_slots)
-                        s.add(part_condition)
-                        if s.check() == sat and len(part_slots)!=0:
-                            num_part += 1
-                    # Verify minimum number of participants
-                    thresh = Int('thresh')
-                    s.add(And(thresh >= (len(participants) + 1)/2), thresh == num_part)
-
-                if s.check() == sat:
-                    m = s.model()
-                    avail_slots[day].append(m[T])"""
 
         print(f"This took {time.time() - start} seconds")
         print(avail_slots)
