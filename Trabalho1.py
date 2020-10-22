@@ -1,3 +1,5 @@
+from z3 import *
+
 class Meeting():
     """
     A class that represents a meeting
@@ -20,6 +22,42 @@ class Meeting():
         """ This method verifies the project's collaborators and available rooms
         determine the time and room for the meeting
         """
+        participants = self.project.participants
+        leader = self.project.leader
+        leader_per_day = {}
+        days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+
+        avail_slots = {}
+        for day in days:
+            avail_slots[day] = []
+            for hour in range(8, 20, 1):
+                s = Solver()
+                T = Int('T')
+                s.add(T == hour)
+                L = Bool('L')
+                leader_slots = [slot.slot_to_cond(T) for slot in leader if slot.day == day]
+                leader_condition = Or(leader_slots)
+                s.add(L == (len(leader_slots)!=0)) # Verify if leader can at least once
+                s.add(leader_condition)
+
+                # Verify Participants
+                if s.check() == sat:
+                    num_part = 1
+                    for part in participants:
+                        part_slots = [slot.slot_to_cond(T) for slot in part if slot.day == day]
+                        part_condition = Or(part_slots)
+                        s.add(part_condition)
+                        if s.check() == sat and len(part_slots)!=0:
+                            num_part += 1
+                    # Verify minimum number of participants
+                    thresh = Int('thresh')
+                    s.add(And(thresh >= (len(participants) + 1)/2), thresh == num_part)
+
+                if s.check() == sat:
+                    m = s.model()
+                    avail_slots[day].append(m[T])
+
+        print(avail_slots)
 
 
 class Project():
@@ -29,8 +67,8 @@ class Project():
     Attributes:
         project_id (int): project identifier
         num_meetings (int): number of project meetings
-        participants ([class Slot]): participant collaborators working on the project, does not include leader
-        leader (class Slot): leader of the project collaborators
+        participants ([[class Slot]]): participant collaborators working on the project, does not include leader
+        leader ([class Slot]): leader of the project collaborators
     """
     def __init__(self, project_id, num_meetings, participants, leader):
         self.project_id = project_id
@@ -55,6 +93,9 @@ class Slot():
     def __init__(self, day, start, end):
         self.day = day
         self.time_interval = (start, end)
+
+    def slot_to_cond(self, x):
+        return And(x >= self.time_interval[0], x < self.time_interval[1])
         
 
 class Room():
@@ -68,3 +109,14 @@ class Room():
     def __init__(self, room_id, availability):
         self.room_id = room_id
         self.availability = availability
+
+
+participants = [
+    [Slot("MON", 8, 9), Slot("MON", 10, 13), Slot("TUE", 11, 13), Slot("TUE", 14, 16),  Slot("WED", 8, 12)], 
+    [Slot("MON", 8, 9), Slot("TUE", 9, 12), Slot("TUE", 13, 16),  Slot("WED", 9, 11)]
+]
+leader = [Slot("MON", 8, 9), Slot("TUE", 10, 18), Slot("WED", 9, 13)]
+projeto = Project(1, 3, participants, leader)
+rooms = [Room(9, True), Room(1, False)]
+meeting = Meeting(projeto, rooms)
+meeting.get_slots()
