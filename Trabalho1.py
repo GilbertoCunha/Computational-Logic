@@ -1,4 +1,5 @@
 from z3 import *
+import time
 
 class Meeting():
     """
@@ -24,10 +25,42 @@ class Meeting():
         """
         participants = self.project.participants
         leader = self.project.leader
-        leader_per_day = {}
-        days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+        days = {"MON":0, "TUE":1, "WED":2, "THU":3, "FRI":4, "SAT":5, "SUN":6}
+        start = time.time()
 
         avail_slots = {}
+        D = Int('D') # Dia
+        T = Int('Time') # Hora do dia
+        N = Int('N') # Número de participantes disponíveis
+        s = Solver()
+        for slot in leader:
+            s.push() # Guardar slot
+            s.add(D == days[slot.day])
+            avail_slots[slot.day] = []
+            for hour in range(slot.time_interval[0], slot.time_interval[1]): # Iterar horas do slot
+                s.push() # Guardar hora
+                s.add(And(T >= hour, T < hour + 1))
+                
+                num_part = 1
+                for part in participants: # Iterar participantes
+                    s.push() # Guardar participantes
+                    part_cond = Or([pslot.slot_to_cond(T, D) for pslot in part])
+                    s.add(part_cond)
+                    
+                    if s.check() == sat:
+                        num_part += 1
+                        
+                    s.pop() # Remover participante
+                       
+                s.add(And(N == num_part, N >= (len(participants)+1)/2))
+                if s.check() == sat: # Esta hora está disponível
+                    m = s.model()
+                    avail_slots[slot.day].append(m[T])
+                s.pop() # Remover hora
+            s.pop() # Remover slot
+                    
+
+        """avail_slots = {}
         for day in days:
             avail_slots[day] = []
             for hour in range(8, 20, 1):
@@ -55,8 +88,9 @@ class Meeting():
 
                 if s.check() == sat:
                     m = s.model()
-                    avail_slots[day].append(m[T])
+                    avail_slots[day].append(m[T])"""
 
+        print(f"This took {time.time() - start} seconds")
         print(avail_slots)
 
 
@@ -94,8 +128,9 @@ class Slot():
         self.day = day
         self.time_interval = (start, end)
 
-    def slot_to_cond(self, x):
-        return And(x >= self.time_interval[0], x < self.time_interval[1])
+    def slot_to_cond(self, x, d):
+        days = {"MON":0, "TUE":1, "WED":2, "THU":3, "FRI":4, "SAT":5, "SUN":6}
+        return And([x >= self.time_interval[0], x < self.time_interval[1], d == days[self.day]])
         
 
 class Room():
