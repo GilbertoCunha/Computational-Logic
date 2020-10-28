@@ -108,3 +108,17 @@ def get_schedule(path, available_rooms):
         projects.append(get_project(file))
         
     return Schedule(projects, available_rooms)
+
+def pd_centered(df):
+    return df.style.set_table_styles([
+        {"selector": "th", "props": [("text-align", "center")]},
+        {"selector": "td", "props": [("text-align", "center")]}])
+
+def meeting_to_df(r):
+	df_dict = {d: {f"{h}h-{h+1}h": "" for h in range(8, 17)} for d in ["mon","tue","wed","thu","fri"]}
+	for day in df_dict:
+		for hour in range(8, 17):
+			for name, d, h, room in r:
+				if day == d and hour == int(h):
+					df_dict[day][f"{hour}h-{hour+1}h"] += f"| {name} | {room} |"
+	return pd.DataFrame(df_dict)
