@@ -120,5 +120,5 @@ def meeting_to_df(r):
 		for hour in range(8, 17):
 			for name, d, h, room in r:
 				if day == d and hour == int(h):
-					df_dict[day][f"{hour}h-{hour+1}h"] += f"| {name} | {room} |"
+					df_dict[day][f"{hour}h-{hour+1}h"] += f"| {name} - {room} |"
 	return pd.DataFrame(df_dict)
