@@ -1,0 +1,2 @@
+Exemplos mais relevantes: 
+	- Num_meetings: 6, 6, 6, 6
