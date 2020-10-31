@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import pandas as pd
 import glob
 
@@ -25,21 +26,25 @@ class Project():
     def __init__(self, project_id, num_meetings, leader, participants):
         self.project_id = project_id
         self.num_meetings = num_meetings
-        self.collaborators = [leader] + participants
+
+        for name in participants:
+            leader[name] = participants[name]
+
+        self.collaborators = leader
         self.collaborators = self.slots_to_tensor()
         
     def slots_to_tensor(self):
         days = ["mon", "tue", "wed", "thu", "fri"]
         tensor = {}
-        for i in range(len(self.collaborators)):
-            tensor[i] = {}
+        for name in self.collaborators:
+            tensor[name] = {}
             for day in days:
-                tensor[i][day] = {}
+                tensor[name][day] = {}
                 for hour in range(8, 17):
-                    tensor[i][day][hour] = 0
-                    for (d, hs, he) in self.collaborators[i]:
+                    tensor[name][day][hour] = 0
+                    for (d, hs, he) in self.collaborators[name]:
                         if d == day and hour >= hs and hour < he:
-                            tensor[i][day][hour] = 1
+                            tensor[name][day][hour] = 1
         return tensor
 
 
@@ -83,7 +88,7 @@ def get_project(path):
     leader = {name.split('*')[0]: [] for name in names if "*" in name}
     participants = {name: [] for name in names if "*" not in name}
 
-	# Popular os dicionários com os dados do dataframe
+    # Popular os dicionários com os dados do dataframe
     for col in df:
         for i, elem in enumerate(df[col]):
             if elem != float:
@@ -98,28 +103,24 @@ def get_project(path):
                         start, end = df.index[i].replace('h','').split('-')
                         participants[p].append((col.lower()[:3], int(start), int(end)))
 
-	# Transformar os dicionários em listas
-    leader = next(iter(leader.values()))
-    participants = [participants[key] for key in participants]
-
-	# Definir o id do projeto e o número de reuniões semanais
+    # Definir o id do projeto e o número de reuniões semanais
     project_id = path.split('/')[-1].split('.')[0]
     num_meets = int(input(f"How many meetings should be held for project {project_id} this week?"))
     
     return Project(project_id, num_meets, leader, participants)
 
 def get_schedule(path, available_rooms):
-    """
+	"""
 	Esta função lê todos ficheiros csv na diretoria path
 	e converte-os num objeto da classe Schedule
-    """
+	"""
 	
-    projects = []
+	projects = []
 	# Colecionar os projetos de cada ficheiro csv numa lista
-    for file in glob.glob(path + "/*.csv"):
-        projects.append(get_project(file))
-        
-    return Schedule(projects, available_rooms)
+	for file in glob.glob(path + "/*.csv"):
+		projects.append(get_project(file))
+	 
+	return Schedule(projects, available_rooms)
 
 def pd_centered(df):
 	"""
